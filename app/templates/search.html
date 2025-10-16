@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Поиск{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12">
+    <div class="d-flex gap-2 mb-3">
+      <input id="q" class="form-control" placeholder="Что ищем? (заметки и файлы)">
+      <button id="go" class="btn btn-primary">Искать</button>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card bg-body-tertiary border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-2">Заметки</h6>
+        <div id="notesRes" class="list-group list-group-flush small"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-6">
+    <div class="card bg-body-tertiary border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-2">Файлы</h6>
+        <div id="filesRes" class="list-group list-group-flush small"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content') || '';
+  async function api(url){ const r=await fetch(url,{headers:{'X-CSRFToken':csrf}}); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+  function render(data){
+    const nr=document.getElementById('notesRes'); nr.innerHTML='';
+    (data.notes||[]).forEach(n=>{ const a=document.createElement('a'); a.href='/'; a.className='list-group-item bg-transparent'; a.innerHTML=`<strong>${n.title||'Без названия'}</strong><div class="text-secondary">${(n.snippet||'').replace(/<[^>]*>/g,'').slice(0,140)}</div>`; nr.appendChild(a); });
+    const fr=document.getElementById('filesRes'); fr.innerHTML='';
+    (data.files||[]).forEach(f=>{ const a=document.createElement('a'); a.href=`/drive/api/files/${f.id}`; a.target='_blank'; a.className='list-group-item bg-transparent'; a.textContent=f.filename; fr.appendChild(a); });
+  }
+  async function run(){ const v=document.getElementById('q').value.trim(); if(!v) return; const u=new URL('/api/search', window.location.origin); u.searchParams.set('q', v); const data=await api(u); render(data); }
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const p=new URLSearchParams(window.location.search); const q=p.get('q')||''; document.getElementById('q').value=q; if(q) run();
+    document.getElementById('go').addEventListener('click', run);
+    document.getElementById('q').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); run(); }});
+  });
+})();
+</script>
+{% endblock %}
+
+

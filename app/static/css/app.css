@@ -1,0 +1,52 @@
+.card textarea { resize: vertical; }
+.toast { opacity: .95; }
+.card.drag { outline: 2px dashed #4dabf7; outline-offset: -6px; }
+.quill-editor .ql-container { height: 100% !important; }
+
+.notes-grid .note-card { border-radius: 14px; transition: transform .12s ease, box-shadow .2s ease, outline-color .2s ease; }
+.notes-grid .note-card:hover { transform: translateY(-2px); box-shadow: 0 0.6rem 1.2rem rgba(0,0,0,.3); }
+.notes-grid .note-card .title { font-weight: 600; }
+
+.notes-grid .note-card.enlarged { position: fixed; z-index: 1060; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(1100px, calc(100vw - 4rem)); height: calc(100vh - 4rem); max-height: calc(100vh - 4rem); box-shadow: 0 1.2rem 2.2rem rgba(0,0,0,.5); }
+.notes-grid .note-card.enlarged .card-body { display: flex; flex-direction: column; height: 100%; }
+.notes-grid .note-card.enlarged .quill-editor { flex: 1 1 auto; height: auto !important; min-height: 60vh; }
+
+.notes-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(2px); z-index: 1055; animation: fadeIn .18s ease-out both; }
+.note-fullscreen-open { overflow: hidden; }
+
+.note-card.pinned { outline: 2px solid #ffd43b; outline-offset: -6px; }
+.note-context { position: fixed; z-index: 2000; min-width: 160px; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; box-shadow: 0 .5rem 1rem rgba(0,0,0,.3); }
+.note-context .item { padding: .5rem .75rem; cursor: pointer; }
+.note-context .item:hover { background: rgba(255, 212, 59, .15); }
+
+[data-bs-theme='light'] .navbar { background: rgba(255,255,255,.7); backdrop-filter: blur(6px); }
+[data-bs-theme='dark'] .navbar { background: rgba(33,37,41,.7); backdrop-filter: blur(6px); }
+
+.note-card-head { padding: .35rem .5rem .25rem .5rem; display: flex; gap: .5rem; }
+.note-handle { width: 24px; height: 24px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; cursor: grab; user-select: none; background: rgba(255,255,255,.06); }
+.note-card:active .note-handle { cursor: grabbing; }
+.grip-dots { width: 14px; height: 14px; display: inline-block; background-image: radial-gradient(currentColor 1px, transparent 1px); background-size: 4px 4px; background-position: 0 0, 2px 2px; opacity: .7; }
+.drag-hint { opacity: .6; }
+
+.note-card.drop-target { outline: 2px solid #6ea8fe; outline-offset: -6px; animation: pulse 800ms ease-in-out infinite; }
+@keyframes pulse { 0% { outline-color: #6ea8fe; } 50% { outline-color: rgba(110,168,254,.2);} 100% { outline-color: #6ea8fe; } }
+
+#dropZone { transition: background-color .15s ease, border-color .15s ease; }
+#dropZone.drop-over { background-color: rgba(110,168,254,.1); border-color: #6ea8fe !important; }
+
+.fade-in { animation: fadeIn .18s ease-out both; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
+
+.drive-row { user-select: none; }
+.drive-row.dragging { opacity: .6; }
+.drive-row.selected { background-color: rgba(110,168,254,.08); }
+.folder-drop-over { outline: 2px dashed #6ea8fe; outline-offset: -6px; }
+.context-menu { position: fixed; z-index: 2000; min-width: 180px; background: var(--bs-body-bg); border: 1px solid var(--bs-border-color); border-radius: .5rem; box-shadow: 0 .5rem 1rem rgba(0,0,0,.3); }
+.context-menu .item { padding: .5rem .75rem; cursor: pointer; }
+.context-menu .item:hover { background: rgba(110,168,254,.15); }
+
+
+html[data-bs-theme="dark"] .ql-toolbar.ql-snow {
+  background-color: #87929b;
+}
+

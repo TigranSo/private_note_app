@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block title %}Подтверждение входа{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card bg-body-tertiary border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Введите код из письма</h5>
+        <form method="post" action="{{ url_for('auth.verify_post') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="email" value="{{ email }}">
+          <div class="mb-3">
+            <label class="form-label">Код</label>
+            <input name="code" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="one-time-code" class="form-control" placeholder="Например, 1234" required>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary" type="submit">Подтвердить</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('auth.login') }}">Назад</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+

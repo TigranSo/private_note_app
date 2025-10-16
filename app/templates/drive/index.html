@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}Файлы{% endblock %}
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-lg-3">
+    <div class="card bg-body-tertiary border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="mb-2">Загрузка</h6>
+        <input id="driveFileInput" class="form-control" type="file" multiple>
+        <div id="dropZone" class="mt-2 p-3 rounded border border-secondary-subtle text-center small">Перетащите файлы сюда</div>
+        <hr>
+        <div class="small" id="quotaInfo"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-lg-9">
+    <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+      <nav id="breadcrumbs" class="small"></nav>
+      <div class="ms-auto d-flex gap-2">
+        <input id="driveSearch" class="form-control" placeholder="Поиск по имени файла">
+        <button id="driveRefresh" class="btn btn-outline-secondary">Обновить</button>
+        <button id="createFolder" class="btn btn-outline-primary">Новая папка</button>
+      </div>
+    </div>
+    <div class="card bg-body-tertiary border-0 shadow-sm">
+      <div class="card-body">
+        <div id="driveList" class="list-group list-group-flush"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  const csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content') || '';
+  async function api(method, url, body, isForm) {
+    const headers = isForm ? { 'X-CSRFToken': csrf } : { 'Content-Type': 'application/json', 'X-CSRFToken': csrf };
+    const res = await fetch(url, { method, headers, body: isForm ? body : (body ? JSON.stringify(body) : undefined) });
+    if (!res.ok) throw new Error(await res.text());
+    try { return await res.json(); } catch { return {}; }
+  }
+  function fmtSize(bytes){ if(bytes==null) return '-'; const mb=bytes/1024/1024; return mb>1?mb.toFixed(2)+' MB':(bytes/1024).toFixed(0)+' KB'; }
+  let currentFolderId = null;
+  async function refresh(){
+    const q = document.getElementById('driveSearch').value.trim();
+    const url = new URL('/drive/api/files', window.location.origin);
+    if (q) url.searchParams.set('q', q);
+    if (currentFolderId) url.searchParams.set('folder_id', currentFolderId);
+    const data = await api('GET', url.pathname + url.search);
+    const list = document.getElementById('driveList');
+    list.innerHTML = '';
+    // folders first
+    (data.folders||[]).forEach(d => {
+      const item = document.createElement('div');
+      item.className = 'list-group-item bg-transparent d-flex justify-content-between align-items-center';
+      const left = document.createElement('div');
+      left.innerHTML = `📁 <strong>${d.name}</strong>`;
+      const btns = document.createElement('div');
+      const open = document.createElement('button'); open.className = 'btn btn-sm btn-outline-light'; open.textContent = 'Открыть'; open.onclick = ()=>{ currentFolderId = d.id; refresh(); };
+      const rename = document.createElement('button'); rename.className = 'btn btn-sm btn-outline-secondary ms-2'; rename.textContent = 'Переименовать'; rename.onclick = async ()=>{ const nn = prompt('Новое имя папки', d.name); if(!nn) return; await api('PATCH', `/drive/api/folders/${d.id}`, { name: nn }); await refresh(); };
+      const del = document.createElement('button'); del.className = 'btn btn-sm btn-outline-danger ms-2'; del.textContent = 'Удалить'; del.onclick = async ()=>{ if(!confirm('Удалить папку?')) return; await api('DELETE', `/drive/api/folders/${d.id}`); await refresh(); };
+      btns.appendChild(open); btns.appendChild(rename); btns.appendChild(del);
+      item.appendChild(left); item.appendChild(btns);
+      list.appendChild(item);
+    });
+    // files
+    (data.files||[]).forEach(f => {
+      const item = document.createElement('div');
+      item.className = 'list-group-item bg-transparent d-flex justify-content-between align-items-center';
+      const left = document.createElement('div');
+      left.innerHTML = `<strong>${f.filename}</strong> <span class="text-secondary small">${fmtSize(f.size)}</span>`;
+      const btns = document.createElement('div');
+      const open = document.createElement('a');
+      open.href = `/drive/api/files/${f.id}`;
+      open.target = '_blank';
+      open.className = 'btn btn-sm btn-outline-light';
+      open.textContent = 'Открыть';
+      const preview = document.createElement('button');
+      preview.className = 'btn btn-sm btn-outline-primary ms-2';
+      preview.textContent = 'Предпросмотр';
+      preview.onclick = ()=>{
+        const isVid = /(\.|\/)(mp4|mov|webm)$/i.test(f.filename||'') || /video\//.test(f.mime_type||'');
+        const isAud = /(\.|\/)(mp3|wav|ogg)$/i.test(f.filename||'') || /audio\//.test(f.mime_type||'');
+        if (isVid || isAud) {
+          const m = document.createElement('div');
+          m.className = 'modal fade';
+          m.innerHTML = `
+<div class="modal-dialog modal-lg modal-dialog-centered">
+  <div class="modal-content bg-dark">
+    <div class="modal-header border-0">
+      <h6 class="modal-title">Предпросмотр</h6>
+      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+    </div>
+    <div class="modal-body">
+      <video class="w-100" src="/drive/api/files/${f.id}" controls></video>
+    </div>
+  </div>
+</div>`;
+          document.body.appendChild(m);
+          new bootstrap.Modal(m).show();
+          m.addEventListener('hidden.bs.modal', ()=>m.remove());
+        } else {
+          window.open(`/drive/api/files/${f.id}`, '_blank');
+        }
+      };
+      const rename = document.createElement('button');
+      rename.className = 'btn btn-sm btn-outline-secondary ms-2';
+      rename.textContent = 'Переименовать';
+      rename.onclick = async ()=>{ const nn = prompt('Новое имя файла', f.filename); if(!nn) return; await api('PATCH', `/drive/api/files/${f.id}`, { filename: nn }); await refresh(); };
+      const share = document.createElement('button');
+      share.className = 'btn btn-sm btn-outline-success ms-2';
+      share.textContent = 'Поделиться';
+      share.onclick = async ()=>{ const min = prompt('Минут до истечения', '60'); if(!min) return; const res = await api('POST', `/drive/api/files/${f.id}/share`, { minutes: Number(min) }); prompt('Ссылка для доступа', location.origin + res.url); };
+      const move = document.createElement('button');
+      move.className = 'btn btn-sm btn-outline-secondary ms-2';
+      move.textContent = 'Переместить';
+      move.onclick = async ()=>{ const id = prompt('ID папки назначения (пусто для корня)'); const payload = { folder_id: id ? Number(id) : null }; await api('PATCH', `/drive/api/files/${f.id}/move`, payload); await refresh(); };
+      const del = document.createElement('button');
+      del.className = 'btn btn-sm btn-outline-danger ms-2';
+      del.textContent = 'Удалить';
+      del.onclick = async ()=>{ if(!confirm('Удалить файл?')) return; await api('DELETE', `/drive/api/files/${f.id}`); await refresh(); };
+      btns.appendChild(open); btns.appendChild(preview); btns.appendChild(rename); btns.appendChild(share); btns.appendChild(move); btns.appendChild(del);
+      item.appendChild(left); item.appendChild(btns);
+      list.appendChild(item);
+    });
+    // breadcrumbs
+    const bc = document.getElementById('breadcrumbs');
+    if (bc) {
+      bc.innerHTML = '';
+      const parts = [{ id: null, name: 'Корень' }, ...(data.breadcrumbs||[])];
+      parts.forEach((b, idx)=>{
+        const a = document.createElement('a'); a.href = '#'; a.textContent = b.name; a.className = 'me-2';
+        a.onclick = (e)=>{ e.preventDefault(); currentFolderId = b.id; refresh(); };
+        bc.appendChild(a);
+        if (idx < parts.length - 1) { const sep=document.createElement('span'); sep.textContent='›'; sep.className='text-secondary me-2'; bc.appendChild(sep); }
+      });
+    }
+    const qi = document.getElementById('quotaInfo');
+    const usedMb = (data.usage?.bytes||0)/1024/1024;
+    const limitMb = data.limits?.mb;
+    const usedCount = data.usage?.count||0;
+    const limitCnt = data.limits?.count;
+    qi.textContent = `Файлов: ${usedCount}${limitCnt?'/'+limitCnt:''}  | Объем: ${usedMb.toFixed(2)} MB${limitMb?'/'+limitMb+' MB':''}`;
+  }
+  window.addEventListener('DOMContentLoaded', ()=>{
+    document.getElementById('driveRefresh').addEventListener('click', refresh);
+    document.getElementById('driveSearch').addEventListener('input', refresh);
+    document.getElementById('driveFileInput').addEventListener('change', async (e)=>{
+      const files = Array.from(e.target.files||[]);
+      for(const f of files){ const err = validateFile(f); if (err) { alert(err); continue; } const fd = new FormData(); fd.append('file', f); const u = new URL('/drive/api/files', window.location.origin); if (currentFolderId) u.searchParams.set('folder_id', currentFolderId); await api('POST', u.pathname + u.search, fd, true); }
+      await refresh();
+      e.target.value = '';
+    });
+    const dz = document.getElementById('dropZone');
+    if (dz) {
+      const over = (e)=>{ e.preventDefault(); dz.classList.add('drop-over'); };
+      const leave = ()=> dz.classList.remove('drop-over');
+      dz.addEventListener('dragover', over);
+      dz.addEventListener('dragenter', over);
+      dz.addEventListener('dragleave', leave);
+      dz.addEventListener('drop', async (e)=>{
+        e.preventDefault(); dz.classList.remove('drop-over');
+        const files = Array.from(e.dataTransfer.files||[]);
+        for(const f of files){ const err = validateFile(f); if (err) { alert(err); continue; } const fd = new FormData(); fd.append('file', f); const u = new URL('/drive/api/files', window.location.origin); if (currentFolderId) u.searchParams.set('folder_id', currentFolderId); await api('POST', u.pathname + u.search, fd, true); }
+        await refresh();
+      });
+    }
+    document.getElementById('createFolder')?.addEventListener('click', async ()=>{ const name = prompt('Имя папки'); if (!name) return; await api('POST', '/drive/api/folders', { name, parent_id: currentFolderId }); await refresh(); });
+    refresh();
+  });
+
+  function validateFile(file){
+    const allowed = (window.APP_ALLOWED_EXTENSIONS||[]).map(s=>String(s).toLowerCase());
+    const maxMb = window.APP_MAX_FILE_SIZE_MB || 20;
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (allowed.length && !allowed.includes(ext)) return `Тип файла не разрешен: .${ext}`;
+    if (file.size > maxMb*1024*1024) return `Файл слишком большой: ${(file.size/1024/1024).toFixed(2)} MB > ${maxMb} MB`;
+    return '';
+  }
+})();
+</script>
+{% endblock %}
+
+

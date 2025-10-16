@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+{% block title %}Профиль{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card bg-body-tertiary border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Профиль</h5>
+        <form method="post" action="{{ url_for('auth.update_profile') }}" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <div class="d-flex gap-3 align-items-center mb-3">
+            <img id="avatarPreview" src="{{ url_for('auth.user_avatar', user_id=current_user.id) }}" class="rounded-circle border" style="width:72px;height:72px;object-fit:cover;" onerror="this.style.display='none'">
+            <div class="flex-grow-1">
+              <div class="mb-2">
+                <label class="form-label">Имя</label>
+                <input class="form-control" type="text" name="name" value="{{ current_user.name or '' }}">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Новый пароль</label>
+                <input class="form-control" type="password" name="password" placeholder="Оставьте пустым чтобы не менять">
+              </div>
+              <div class="mb-2">
+                <label class="form-label">Аватар</label>
+                <input id="avatarInput" class="form-control" type="file" name="avatar" accept="image/*">
+                <small class="text-secondary">Перед сохранением можно обрезать изображение.</small>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" type="submit">Сохранить</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="modal fade" id="cropModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-body-tertiary">
+      <div class="modal-header border-0">
+        <h6 class="modal-title">Обрезка аватара</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="ratio ratio-1x1 bg-dark-subtle rounded overflow-hidden">
+          <img id="cropImage" src="" style="object-fit:contain;">
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button id="applyCrop" type="button" class="btn btn-primary">Применить</button>
+      </div>
+    </div>
+  </div>
+  </div>
+<script>
+(function(){
+  let cropper = null;
+  const input = document.getElementById('avatarInput');
+  const preview = document.getElementById('avatarPreview');
+  const img = document.getElementById('cropImage');
+  const modalEl = document.getElementById('cropModal');
+  const modal = modalEl ? new bootstrap.Modal(modalEl) : null;
+  input && input.addEventListener('change', (e)=>{
+    const file = e.target.files?.[0]; if(!file) return;
+    const url = URL.createObjectURL(file);
+    img.src = url;
+    if (modal) modal.show();
+    setTimeout(()=>{
+      if (window.Cropper) {
+        cropper && cropper.destroy();
+        cropper = new Cropper(img, { aspectRatio: 1, viewMode: 1 });
+      }
+    }, 150);
+  });
+  document.getElementById('applyCrop')?.addEventListener('click', ()=>{
+    if (!cropper) { modal?.hide(); return; }
+    cropper.getCroppedCanvas({ width: 256, height: 256 }).toBlob((blob)=>{
+      if (!blob) { modal?.hide(); return; }
+      // Replace file in input with cropped blob
+      const file = new File([blob], 'avatar.png', { type: 'image/png' });
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      const url = URL.createObjectURL(file);
+      if (preview) preview.src = url;
+      modal?.hide();
+    }, 'image/png');
+  });
+})();
+</script>
+{% endblock %}
